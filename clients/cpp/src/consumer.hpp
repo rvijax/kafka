@@ -16,14 +16,14 @@
 */
 
 /*
- * producer.hpp
+ * consumer.hpp
  *
  *  Created on: 21 Jun 2011
  *      Author: Ben Gray (@benjamg)
  */
 
-#ifndef KAFKA_PRODUCER_HPP_
-#define KAFKA_PRODUCER_HPP_
+#ifndef KAFKA_CONSUMER_HPP_
+#define KAFKA_CONSUMER_HPP_
 
 #include <string>
 #include <vector>
@@ -34,19 +34,19 @@
 #include <boost/function.hpp>
 #include <stdint.h>
 
-#include "encoder_producer.hpp"
+#include "encoder_consumer.hpp"
 
 namespace kafkaconnect {
 
 const uint32_t use_random_partition = 0xFFFFFFFF;
 
-class producer
+class consumer
 {
 public:
 	typedef boost::function<void(const boost::system::error_code&)> error_handler_function;
 
-	producer(boost::asio::io_service& io_service, const error_handler_function& error_handler = error_handler_function());
-	~producer();
+	consumer(boost::asio::io_service& io_service, const error_handler_function& error_handler = error_handler_function());
+	~consumer();
 
 	void connect(const std::string& hostname, const uint16_t port);
 	void connect(const std::string& hostname, const std::string& servicename);
@@ -73,11 +73,11 @@ public:
 		boost::asio::streambuf* buffer = new boost::asio::streambuf();
 		std::ostream stream(buffer);
 
-		kafkaconnect::encode_producer(stream, topic, partition, messages);
+		kafkaconnect::encode(stream, topic, partition, messages);
 
 		boost::asio::async_write(
 			_socket, *buffer,
-			boost::bind(&producer::handle_write_request, this, boost::asio::placeholders::error, buffer)
+			boost::bind(&consumer::handle_write_request, this, boost::asio::placeholders::error, buffer)
 		);
 
 		return true;
@@ -113,4 +113,4 @@ private:
 
 }
 
-#endif /* KAFKA_PRODUCER_HPP_ */
+#endif /* KAFKA_CONSUMER_HPP_ */
