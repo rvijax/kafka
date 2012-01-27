@@ -97,7 +97,7 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 
 
 template <typename List>
-void decode_consumer(std::istream& stream, List& messages)
+void decode_consumer(std::istringstream& stream, List& messages)
 {
 	messages.clear();
 

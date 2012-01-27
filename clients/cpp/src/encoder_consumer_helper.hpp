@@ -48,7 +48,7 @@ private:
 	friend class test::encoder_consumer_helper;
 	friend void encode_consumer_request_size(std::ostream& , const std::string& );
 	friend void encode_consumer_request(std::ostream&, const std::string&, const uint32_t);
-	template <typename List> friend void decode_consumer(std::istream& stream, List& messages);
+	template <typename List> friend void decode_consumer(std::istringstream& stream, List& messages);
 
 	static std::ostream& message_encode(std::ostream& stream, const std::string message)
 	{
@@ -69,7 +69,7 @@ private:
 		return stream;
 	}
 
-	static std::istream& message_decode(std::istream& stream, std::string &message, uint32_t message_size)
+	static std::istream& message_decode(std::istringstream& stream, std::string &message, uint32_t message_size)
 	{
 /*
     A message. The format of an N byte message is the following:
@@ -101,7 +101,7 @@ private:
 	}
 
 	template <typename Data>
-	static std::istream& raw(std::istream& stream, Data& data, size_t length)
+	static std::istream& raw(std::istringstream& stream, Data& data, size_t length)
 	{
 		stream.readsome(reinterpret_cast<char*>(&data), length);
 		std::cout <<  "!" << data << "!" << std::endl;

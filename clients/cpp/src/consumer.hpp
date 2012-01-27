@@ -78,48 +78,52 @@ public:
 		// send consume request size
 		kafkaconnect::encode_consumer_request_size(stream_write_consumer_request_size, topic);
 
-		boost::asio::async_write(
-			_socket, *buffer_write_consumer_request_size,
-			boost::bind(&consumer::handle_write_request, this, boost::asio::placeholders::error, buffer_write_consumer_request_size)
-		);
+		boost::asio::write(	_socket, *buffer_write_consumer_request_size,
+			boost::asio::transfer_all());
 
+		// send consume request
 		boost::asio::streambuf* buffer_write_consumer_request = new boost::asio::streambuf();
 		std::ostream stream_write_consumer_request(buffer_write_consumer_request);
 
-		// send consume request
 		kafkaconnect::encode_consumer_request(stream_write_consumer_request, topic, partition);
 
-		boost::asio::async_write(
-			_socket, *buffer_write_consumer_request,
-			boost::bind(&consumer::handle_write_request, this, boost::asio::placeholders::error, buffer_write_consumer_request)
-		);
+		boost::asio::write( _socket, *buffer_write_consumer_request,
+			boost::asio::transfer_all());
 
+		delete buffer_write_consumer_request_size;
+		delete buffer_write_consumer_request;
 		std::cout << "request send." << std::endl;
 
-
-		// TODO: make this more efficient with memory allocations.
-		boost::asio::streambuf* buffer_read = new boost::asio::streambuf();
-
+		// start read
 		size_t header;
-				boost::asio::read(
-					_socket,
-					boost::asio::buffer( &header, sizeof(header) )
-				);
+		boost::asio::read(
+			_socket,
+			boost::asio::buffer( &header, sizeof(header) )
+		);
 		header = htonl(header);
 		std::cout << "body is " << header << " bytes" << std::endl;
 
-		buffer_read->prepare( header );
-		boost::asio::async_read_some(
-				_socket, *buffer_read,
-				boost::bind(&consumer::handle_read_request, this, boost::asio::placeholders::error, buffer_read)
-		);
+/*# Create a character array to act as the buffer.
+  buf         = array.array('c', ' ' * length)
+  read_length = 0
 
-		buffer_read->commit(header);
-		std::istream stream_read(buffer_read);
+  try:
+    while read_length < length:
+      read_length += self.socket.recv_into(buf, length)
+
+  except errno.EAGAIN:
+    self.disconnect()
+    raise IOError, "Timeout reading from the socket."*/
+
+		size_t bytes_to_read = header - 4;
+		char *buffer_read = new char[bytes_to_read];
+		size_t body_read = boost::asio::read(_socket, boost::asio::buffer( buffer_read, bytes_to_read) );
+		std::cout << "body is " << body_read << " bytes" << std::endl;
+
+		std::istringstream stream_read(buffer_read);
 		kafkaconnect::decode_consumer(stream_read, messages);
 
-		std::cout << "response received." << std::endl;
-
+		delete 	buffer_read;
 		return true;
 	}
 
@@ -134,11 +138,16 @@ private:
 
 	void handle_resolve(const boost::system::error_code& error_code, boost::asio::ip::tcp::resolver::iterator endpoints);
 	void handle_connect(const boost::system::error_code& error_code, boost::asio::ip::tcp::resolver::iterator endpoints);
-	void handle_write_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer);
+
+/*
+	void handle_write_request_size(const boost::system::error_code& error_code, boost::asio::streambuf* buffer, const std::string& topic, const uint32_t partition);
+	void handle_write_request_body(const boost::system::error_code& error_code, boost::asio::streambuf* buffer);
+
 
 	//template <typename List>
 	void handle_read_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer);//, List& messages);
 	//void handle_read_request(const boost::system::error_code& error_code);
+*/
 
 	/* Fail Fast Error Handler Braindump
 	 *

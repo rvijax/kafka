@@ -104,7 +104,30 @@ void consumer::handle_connect(const boost::system::error_code& error_code, boost
 	else { fail_fast_error_handler(error_code); }
 }
 
-void consumer::handle_write_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer)
+/*
+void consumer::handle_write_request_size(const boost::system::error_code& error_code, boost::asio::streambuf* buffer, const std::string& topic, const uint32_t partition)
+{
+	if (error_code)
+	{
+		fail_fast_error_handler(error_code);
+		std::cout << "error1" << std::endl;
+	}
+
+	boost::asio::streambuf* buffer_write_consumer_request = new boost::asio::streambuf();
+	std::ostream stream_write_consumer_request(buffer_write_consumer_request);
+
+	// send consume request
+	kafkaconnect::encode_consumer_request(stream_write_consumer_request, topic, partition);
+
+	boost::asio::async_write(
+		_socket, *buffer_write_consumer_request,
+		boost::bind(&consumer::handle_write_request_body, this, boost::asio::placeholders::error, buffer_write_consumer_request)
+	);
+
+	delete buffer;
+}
+
+void consumer::handle_write_request_body(const boost::system::error_code& error_code, boost::asio::streambuf* buffer)
 {
 	if (error_code)
 	{
@@ -112,6 +135,34 @@ void consumer::handle_write_request(const boost::system::error_code& error_code,
 	}
 
 	delete buffer;
+
+	// TODO: make this more efficient with memory allocations.
+	boost::asio::streambuf* buffer_read = new boost::asio::streambuf();
+
+	size_t header;
+	boost::asio::read(
+		_socket,
+		boost::asio::buffer( &header, sizeof(header) )
+	);
+	header = htonl(header);
+	std::cout << "body is " << header << " bytes" << std::endl;
+
+	buffer_read->prepare( header );
+	boost::asio::read(
+		_socket,
+		boost::asio::buffer( buffer_read, header )
+	);
+
+	boost::asio::async_read(
+			_socket, *buffer_read,
+			boost::bind(&consumer::handle_read_request_head, this, boost::asio::placeholders::error, buffer_read)
+	);
+
+	buffer_read->commit(header);
+	std::istream stream_read(buffer_read);
+	//kafkaconnect::decode_consumer(stream_read, messages);
+
+	std::cout << "response received." << std::endl;
 }
 
 //template <typename List>
@@ -126,21 +177,54 @@ void consumer::handle_read_request(const boost::system::error_code& error_code, 
 	else
 	{
 
-		/*std::ostringstream ss;
+		std::ostringstream ss;
 		ss << buf;
-		std::string s = ss.str();*/
+		std::string s = ss.str();
 
 		std::cout << "Message received." << std::endl;
 
-/*		//read data response
+		//read data response
 		std::istream stream_read(buffer);
 		kafkaconnect::decode_consumer(stream_read, messages);
-	*/
+
 	}
 
 	std::cout << "reached" << std::endl;
 
 	//delete buffer;
+}*/
+
+/*void handle_read_header(const boost::system::error_code& error)
+{
+  if (!error && read_msg_.decode_header())
+  {
+    boost::asio::async_read(socket_,
+        boost::asio::buffer(read_msg_.body(), read_msg_.body_length()),
+        boost::bind(&chat_client::handle_read_body, this,
+          boost::asio::placeholders::error));
+  }
+  else
+  {
+    do_close();
+  }
 }
+
+void handle_read_body(const boost::system::error_code& error)
+{
+  if (!error)
+  {
+    std::cout.write(read_msg_.body(), read_msg_.body_length());
+    std::cout << "\n";
+    boost::asio::async_read(socket_,
+        boost::asio::buffer(read_msg_.data(), chat_message::header_length),
+        boost::bind(&chat_client::handle_read_header, this,
+          boost::asio::placeholders::error));
+  }
+  else
+  {
+    do_close();
+  }
+}*/
+
 
 }
