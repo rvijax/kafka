@@ -32,6 +32,9 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <boost/iostreams/device/array.hpp>
+#include <boost/iostreams/stream.hpp>
+
 #include <stdint.h>
 
 #include "encoder_consumer.hpp"
@@ -103,25 +106,25 @@ public:
 		header = htonl(header);
 		std::cout << "body is " << header << " bytes" << std::endl;
 
-/*# Create a character array to act as the buffer.
-  buf         = array.array('c', ' ' * length)
-  read_length = 0
-
-  try:
-    while read_length < length:
-      read_length += self.socket.recv_into(buf, length)
-
-  except errno.EAGAIN:
-    self.disconnect()
-    raise IOError, "Timeout reading from the socket."*/
-
 		size_t bytes_to_read = header - 4;
 		char *buffer_read = new char[bytes_to_read];
 		size_t body_read = boost::asio::read(_socket, boost::asio::buffer( buffer_read, bytes_to_read) );
 		std::cout << "body is " << body_read << " bytes" << std::endl;
 
-		std::istringstream stream_read(buffer_read);
-		kafkaconnect::decode_consumer(stream_read, messages);
+		//source: http://stackoverflow.com/questions/2079912/simpler-way-to-create-a-c-memorystream-from-char-size-t-without-copying-t
+		boost::iostreams::stream<Device> stream_read(buffer_read, bytes_to_read);
+
+		/*std::string output;
+			while(stream >> output)
+			    std::cout << output;
+		*/
+
+		kafkaconnect::decode_consumer(stream_read, bytes_to_read, messages);
+
+		/*for (unsigned i=0; i< body_read; i++)
+		{
+			std::cout << "[" << buffer_read[i] << "]" << std::endl;
+		}*/
 
 		delete 	buffer_read;
 		return true;

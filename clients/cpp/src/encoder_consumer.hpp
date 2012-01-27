@@ -97,45 +97,45 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 
 
 template <typename List>
-void decode_consumer(std::istringstream& stream, List& messages)
+void decode_consumer(boost::iostreams::stream<Device>& stream_read, const uint32_t buffer_size, List& messages)
 {
 	messages.clear();
-
-/*	std::string output;
-	while(stream >> output)
-	    std::cout << output;
-	return;*/
-
+/*
 	uint32_t buffer_size;
 	stream >> buffer_size;
 	//encoder_consumer_helper::raw(stream, buffer_size, 4);
+	buffer_size = ntohl(buffer_size);
+*/
 
 	std::cout << "buffer-size:[" << buffer_size  << "][" << ntohl(buffer_size) << "]" << std::endl;
 
-	buffer_size = ntohl(buffer_size);
-
 	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
-	stream >> error_code;
-	//encoder_consumer_helper::raw(stream, error_code, 2);
+	//stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
+	//stream_read >> error_code;
+	encoder_consumer_helper::raw(stream_read, error_code, 2);
 
 	std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
 
-	uint32_t processed_bytes = 6;
+	uint32_t processed_bytes = 2;
 	uint32_t total_bytes_to_process  = buffer_size;
 
 	while (processed_bytes <= total_bytes_to_process)
 	{
 		uint32_t message_size;
-		encoder_consumer_helper::raw(stream, message_size, 4);
+		//stream_read.read((char*)&message_size, sizeof(message_size));
+		//stream_read >> message_size;
+		encoder_consumer_helper::raw(stream_read, message_size, 4);
+
+		std::cout << "message_size:[" << message_size  << "][" << ntohs(message_size) << "]" << std::endl;
 		message_size =  ntohl(message_size);
 
 		std::string message;
-		encoder_consumer_helper::message_decode(stream, message, message_size);
+		encoder_consumer_helper::message_decode(stream_read, message, message_size);
 		std::cout << "?" << message_size << "?" << message << "?" << std::endl;
 		messages.push_back(message);
 
-		processed_bytes += message_size;
+		processed_bytes += message_size + 4;
 	}
 }
 
