@@ -55,6 +55,9 @@ void encode_consumer_request_size(std::ostream& stream, const std::string& topic
 	# REQUEST TYPE ID + TOPIC LENGTH + TOPIC + PARTITION + OFFSET + MAX SIZE
 	def request_size(self):
 		return 2 + 2 + len(self.topic) + 4 + 8 + 4
+
+	def encode_request_size(self):
+		return struct.pack('>i', self.request_size())
 */
 	// Packet format is ... packet size (4 bytes)
 	encoder_consumer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 8 + 4));
@@ -65,28 +68,26 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 {
 /*
 	source: https://github.com/dsully/pykafka/blob/master/kafka/consumer.py
-    def encode_request_size(self):
-		return struct.pack('>i', self.request_size())
-
     def encode_request(self):
 		length = len(self.topic)
 	    return struct.pack('>HH%dsiQi' % length, self.request_type, length, self.topic, self.partition, self.offset, self.max_size)*/
 
 	// ... topic string size (2 bytes) & topic string
-	encoder_consumer_helper::raw(stream, htons(topic.size()));
+	encoder_consumer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 8 + 4));
 
-	// ... magic number (2 bytes)
+	// ... kafka format number (2 bytes)
 	encoder_consumer_helper::raw(stream, htons(kafka_format_version));
 
-	encoder_consumer_helper::raw(stream, topic.size());
+	encoder_consumer_helper::raw(stream, htons(topic.size()));
 
 	stream << topic;
 
 	// ... partition (4 bytes)
 	encoder_consumer_helper::raw(stream, htonl(partition));
 
-	// ... offet (4 bytes)
-	encoder_consumer_helper::raw(stream, kafkaconnect::htonll(0));
+	// ... offet (8 bytes)
+	uint64_t offset = 0;
+	encoder_consumer_helper::raw(stream, kafkaconnect::htonll(offset));
 
 	// ... max_size (4 bytes)
 	encoder_consumer_helper::raw(stream, htonl(max_size));
@@ -102,12 +103,16 @@ void decode_consumer(std::istream& stream, List& messages)
 	encoder_consumer_helper::raw(stream, buffer_size, 4);
 	buffer_size = ntohl(buffer_size);
 
+	std::cout << "buffer-size:[" << buffer_size  << "]" << std::endl;
+
 	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
 	encoder_consumer_helper::raw(stream, error_code, 2);
 
-	uint32_t processed_bytes = 0;
-	uint32_t total_bytes_to_process  = buffer_size - 4  - 2;
+	std::cout << "error_code:[" << error_code  << "]" << std::endl;
+
+	uint32_t processed_bytes = 6;
+	uint32_t total_bytes_to_process  = buffer_size;
 
 	while (processed_bytes <= total_bytes_to_process)
 	{
@@ -117,10 +122,10 @@ void decode_consumer(std::istream& stream, List& messages)
 
 		std::string message;
 		encoder_consumer_helper::message_decode(stream, message, message_size);
-		std::cout << "?" << message << "?" << std::endl;
+		std::cout << "?" << message_size << "?" << message << "?" << std::endl;
 		messages.push_back(message);
 
-		processed_bytes += 4 + message_size;
+		processed_bytes += message_size;
 	}
 }
 

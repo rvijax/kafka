@@ -22,6 +22,7 @@
 #define KAFKA_ENCODER_HELPER_HPP_
 
 #include <ostream>
+#include <iostream>
 #include <istream>
 #include <string>
 
@@ -86,7 +87,7 @@ private:
 		raw(stream, checksum, 4);
 		checksum =  ntohl(checksum);
 
-		raw(stream, message, message_size);
+		raw(stream, message, message_size - 4 - 1 - 4);
 
 		// ... string crc32 (4 bytes)
 /*		boost::crc_32_type result;
@@ -102,7 +103,8 @@ private:
 	template <typename Data>
 	static std::istream& raw(std::istream& stream, Data& data, size_t length)
 	{
-		stream.read(reinterpret_cast<char*>(&data), length);
+		stream.readsome(reinterpret_cast<char*>(&data), length);
+		std::cout <<  "!" << data << "!" << std::endl;
 	}
 
 	template <typename Data>

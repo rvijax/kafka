@@ -62,14 +62,14 @@ public:
 
 	// TODO: replace this with a sending of the buffered data so encode is called prior to send this will allow for decoupling from the encoder
 	template <typename List>
-	bool consume(List& messages, const std::string& topic, const uint32_t partition = kafkaconnect::use_random_partition)
+	bool consume(List& messages, const std::string& topic, const uint32_t partition)
 	{
 		if (!is_connected())
 		{
 			return false;
 		}
 
-		// TODO: make this more efficient with memory allocations.
+/*		// TODO: make this more efficient with memory allocations.
 		boost::asio::streambuf* buffer_write_consumer_request_size = new boost::asio::streambuf();
 		std::ostream stream_write_consumer_request_size(buffer_write_consumer_request_size);
 
@@ -79,7 +79,7 @@ public:
 		boost::asio::async_write(
 			_socket, *buffer_write_consumer_request_size,
 			boost::bind(&consumer::handle_write_request, this, boost::asio::placeholders::error, buffer_write_consumer_request_size)
-		);
+		);*/
 
 		boost::asio::streambuf* buffer_write_consumer_request = new boost::asio::streambuf();
 		std::ostream stream_write_consumer_request(buffer_write_consumer_request);

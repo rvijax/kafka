@@ -27,7 +27,7 @@
 int main(int argc, char* argv[])
 {
 	std::string hostname = (argc >= 2) ? argv[1] : "127.0.0.1";
-	std::string port = (argc >= 3) ? argv[2] : "2181";
+	std::string port = (argc >= 3) ? argv[2] : "9092";
 
 	boost::asio::io_service io_service;
 	std::auto_ptr<boost::asio::io_service::work> work(new boost::asio::io_service::work(io_service));
@@ -44,14 +44,15 @@ int main(int argc, char* argv[])
 	std::vector<std::string> messages;
 	//messages.push_back("So long and thanks for all the fish");
 	//messages.push_back("Time is an illusion. Lunchtime doubly so.");
-	consumer.consume(messages, "test");
+	consumer.consume(messages, "test", 0);
 
 
+	unsigned counter = 0;
 	for (std::vector<std::string>::const_iterator msg_iterator = messages.begin();
 			msg_iterator != messages.end();
 			++msg_iterator)
 	{
-		std::cout << "[" << *msg_iterator << "]" << std::endl;
+		std::cout << "[" << counter++ << "][" << *msg_iterator << "]" << std::endl;
 	}
 
 	work.reset();

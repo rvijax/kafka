@@ -26,7 +26,7 @@
 
 int main(int argc, char* argv[])
 {
-	std::string hostname = (argc >= 2) ? argv[1] : "localhost";
+	std::string hostname = (argc >= 2) ? argv[1] : "127.0.0.1";
 	std::string port = (argc >= 3) ? argv[2] : "9092";
 
 	boost::asio::io_service io_service;
