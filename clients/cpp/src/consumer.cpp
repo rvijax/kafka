@@ -114,14 +114,33 @@ void consumer::handle_write_request(const boost::system::error_code& error_code,
 	delete buffer;
 }
 
+//template <typename List>
 void consumer::handle_read_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer)
+//void consumer::handle_read_request(const boost::system::error_code& error_code)
 {
 	if (error_code)
 	{
+		std::cout << "Error" << std::endl;
 		fail_fast_error_handler(error_code);
 	}
+	else
+	{
 
-	//delete buffer; //responsibility of caller
+		/*std::ostringstream ss;
+		ss << buf;
+		std::string s = ss.str();*/
+
+		std::cout << "Message received." << std::endl;
+
+/*		//read data response
+		std::istream stream_read(buffer);
+		kafkaconnect::decode_consumer(stream_read, messages);
+	*/
+	}
+
+	std::cout << "reached" << std::endl;
+
+	//delete buffer;
 }
 
 }

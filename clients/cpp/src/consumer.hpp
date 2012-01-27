@@ -69,7 +69,9 @@ public:
 			return false;
 		}
 
-/*		// TODO: make this more efficient with memory allocations.
+		std::cout << "connected" << std::endl;
+
+		// TODO: make this more efficient with memory allocations.
 		boost::asio::streambuf* buffer_write_consumer_request_size = new boost::asio::streambuf();
 		std::ostream stream_write_consumer_request_size(buffer_write_consumer_request_size);
 
@@ -79,7 +81,7 @@ public:
 		boost::asio::async_write(
 			_socket, *buffer_write_consumer_request_size,
 			boost::bind(&consumer::handle_write_request, this, boost::asio::placeholders::error, buffer_write_consumer_request_size)
-		);*/
+		);
 
 		boost::asio::streambuf* buffer_write_consumer_request = new boost::asio::streambuf();
 		std::ostream stream_write_consumer_request(buffer_write_consumer_request);
@@ -92,17 +94,31 @@ public:
 			boost::bind(&consumer::handle_write_request, this, boost::asio::placeholders::error, buffer_write_consumer_request)
 		);
 
+		std::cout << "request send." << std::endl;
+
+
 		// TODO: make this more efficient with memory allocations.
 		boost::asio::streambuf* buffer_read = new boost::asio::streambuf();
-		std::istream stream_read(buffer_read);
 
-		boost::asio::async_read(
+		size_t header;
+				boost::asio::read(
+					_socket,
+					boost::asio::buffer( &header, sizeof(header) )
+				);
+		header = htonl(header);
+		std::cout << "body is " << header << " bytes" << std::endl;
+
+		buffer_read->prepare( header );
+		boost::asio::async_read_some(
 				_socket, *buffer_read,
 				boost::bind(&consumer::handle_read_request, this, boost::asio::placeholders::error, buffer_read)
 		);
 
-		//read data response
+		buffer_read->commit(header);
+		std::istream stream_read(buffer_read);
 		kafkaconnect::decode_consumer(stream_read, messages);
+
+		std::cout << "response received." << std::endl;
 
 		return true;
 	}
@@ -114,10 +130,15 @@ private:
 	boost::asio::ip::tcp::socket _socket;
 	error_handler_function _error_handler;
 
+//	boost::array<char, 1> buf;
+
 	void handle_resolve(const boost::system::error_code& error_code, boost::asio::ip::tcp::resolver::iterator endpoints);
 	void handle_connect(const boost::system::error_code& error_code, boost::asio::ip::tcp::resolver::iterator endpoints);
 	void handle_write_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer);
-	void handle_read_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer);
+
+	//template <typename List>
+	void handle_read_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer);//, List& messages);
+	//void handle_read_request(const boost::system::error_code& error_code);
 
 	/* Fail Fast Error Handler Braindump
 	 *

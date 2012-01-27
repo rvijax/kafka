@@ -50,6 +50,7 @@ uint64_t htonll(uint64_t value)
 
 void encode_consumer_request_size(std::ostream& stream, const std::string& topic)
 {
+
 /*
 	source: https://github.com/dsully/pykafka/blob/master/kafka/consumer.py
 	# REQUEST TYPE ID + TOPIC LENGTH + TOPIC + PARTITION + OFFSET + MAX SIZE
@@ -58,6 +59,7 @@ void encode_consumer_request_size(std::ostream& stream, const std::string& topic
 
 	def encode_request_size(self):
 		return struct.pack('>i', self.request_size())
+
 */
 	// Packet format is ... packet size (4 bytes)
 	encoder_consumer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 8 + 4));
@@ -73,7 +75,7 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 	    return struct.pack('>HH%dsiQi' % length, self.request_type, length, self.topic, self.partition, self.offset, self.max_size)*/
 
 	// ... topic string size (2 bytes) & topic string
-	encoder_consumer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 8 + 4));
+	//encoder_consumer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 8 + 4));
 
 	// ... kafka format number (2 bytes)
 	encoder_consumer_helper::raw(stream, htons(kafka_format_version));
@@ -99,17 +101,25 @@ void decode_consumer(std::istream& stream, List& messages)
 {
 	messages.clear();
 
-	uint32_t buffer_size;
-	encoder_consumer_helper::raw(stream, buffer_size, 4);
-	buffer_size = ntohl(buffer_size);
+/*	std::string output;
+	while(stream >> output)
+	    std::cout << output;
+	return;*/
 
-	std::cout << "buffer-size:[" << buffer_size  << "]" << std::endl;
+	uint32_t buffer_size;
+	stream >> buffer_size;
+	//encoder_consumer_helper::raw(stream, buffer_size, 4);
+
+	std::cout << "buffer-size:[" << buffer_size  << "][" << ntohl(buffer_size) << "]" << std::endl;
+
+	buffer_size = ntohl(buffer_size);
 
 	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
-	encoder_consumer_helper::raw(stream, error_code, 2);
+	stream >> error_code;
+	//encoder_consumer_helper::raw(stream, error_code, 2);
 
-	std::cout << "error_code:[" << error_code  << "]" << std::endl;
+	std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
 
 	uint32_t processed_bytes = 6;
 	uint32_t total_bytes_to_process  = buffer_size;
