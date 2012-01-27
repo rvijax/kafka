@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 
-#include "../encoder.hpp"
+#include "../encoder_producer.hpp"
 
 BOOST_AUTO_TEST_CASE(single_message_test)
 {
@@ -38,7 +38,7 @@ BOOST_AUTO_TEST_CASE(single_message_test)
 	std::vector<std::string> messages;
 	messages.push_back("test message");
 
-	kafkaconnect::encode(stream, "topic", 1, messages);
+	kafkaconnect::encode_producer(stream, "topic", 1, messages);
 
 	BOOST_CHECK_EQUAL(stream.str().length(), 4 + 2 + 2 + strlen("topic") + 4 + 4 + 9 + strlen("test message"));
 	BOOST_CHECK_EQUAL(stream.str().at(3), 2 + 2 + strlen("topic") + 4 + 4 + 9 + strlen("test message"));
@@ -60,7 +60,7 @@ BOOST_AUTO_TEST_CASE(multiple_message_test)
 	messages.push_back("test message");
 	messages.push_back("another message to check");
 
-	kafkaconnect::encode(stream, "topic", 1, messages);
+	kafkaconnect::encode_producer(stream, "topic", 1, messages);
 
 	BOOST_CHECK_EQUAL(stream.str().length(), 4 + 2 + 2 + strlen("topic") + 4 + 4 + 9 + strlen("test message") + 9 + strlen("another message to check"));
 	BOOST_CHECK_EQUAL(stream.str().at(3), 2 + 2 + strlen("topic") + 4 + 4 + 9 + strlen("test message") + 9 + strlen("another message to check"));

@@ -114,4 +114,14 @@ void consumer::handle_write_request(const boost::system::error_code& error_code,
 	delete buffer;
 }
 
+void consumer::handle_read_request(const boost::system::error_code& error_code, boost::asio::streambuf* buffer)
+{
+	if (error_code)
+	{
+		fail_fast_error_handler(error_code);
+	}
+
+	//delete buffer; //responsibility of caller
+}
+
 }

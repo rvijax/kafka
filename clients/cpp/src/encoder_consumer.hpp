@@ -22,40 +22,108 @@
 #define KAFKA_ENCODER_HPP_
 
 #include <boost/foreach.hpp>
-#include "encoder_producer_helper.hpp"
+#include "encoder_consumer_helper.hpp"
+
+#include <iostream>
 
 namespace kafkaconnect {
 
-template <typename List>
-void encode_producer(std::ostream& stream, const std::string& topic, const uint32_t partition, const List& messages)
+
+//soruce: http://stackoverflow.com/questions/3022552/is-there-any-standard-htonl-like-function-for-64-bits-integers-in-c
+uint64_t htonll(uint64_t value)
 {
-	// Pre-calculate size of message set
-	uint32_t messageset_size = 0;
-	BOOST_FOREACH(const std::string& message, messages)
-	{
-		messageset_size += message_format_header_size + message.length();
-	}
+    // The answer is 42
+    static const int num = 42;
 
+    // Check the endianness
+    if (*reinterpret_cast<const char*>(&num) == num)
+    {
+        const uint32_t high_part = htonl(static_cast<uint32_t>(value >> 32));
+        const uint32_t low_part = htonl(static_cast<uint32_t>(value & 0xFFFFFFFFLL));
+
+        return (static_cast<uint64_t>(low_part) << 32) | high_part;
+    } else
+    {
+        return value;
+    }
+}
+
+void encode_consumer_request_size(std::ostream& stream, const std::string& topic)
+{
+/*
+	source: https://github.com/dsully/pykafka/blob/master/kafka/consumer.py
+	# REQUEST TYPE ID + TOPIC LENGTH + TOPIC + PARTITION + OFFSET + MAX SIZE
+	def request_size(self):
+		return 2 + 2 + len(self.topic) + 4 + 8 + 4
+*/
 	// Packet format is ... packet size (4 bytes)
-	encoder_producer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 4 + messageset_size));
+	encoder_consumer_helper::raw(stream, htonl(2 + 2 + topic.size() + 4 + 8 + 4));
+}
 
-	// ... magic number (2 bytes)
-	encoder_producer_helper::raw(stream, htons(kafka_format_version));
+
+void encode_consumer_request(std::ostream& stream, const std::string& topic, const uint32_t partition)
+{
+/*
+	source: https://github.com/dsully/pykafka/blob/master/kafka/consumer.py
+    def encode_request_size(self):
+		return struct.pack('>i', self.request_size())
+
+    def encode_request(self):
+		length = len(self.topic)
+	    return struct.pack('>HH%dsiQi' % length, self.request_type, length, self.topic, self.partition, self.offset, self.max_size)*/
 
 	// ... topic string size (2 bytes) & topic string
-	encoder_producer_helper::raw(stream, htons(topic.size()));
+	encoder_consumer_helper::raw(stream, htons(topic.size()));
+
+	// ... magic number (2 bytes)
+	encoder_consumer_helper::raw(stream, htons(kafka_format_version));
+
+	encoder_consumer_helper::raw(stream, topic.size());
+
 	stream << topic;
 
 	// ... partition (4 bytes)
-	encoder_producer_helper::raw(stream, htonl(partition));
+	encoder_consumer_helper::raw(stream, htonl(partition));
 
-	// ... message set size (4 bytes) and message set
-	encoder_producer_helper::raw(stream, htonl(messageset_size));
-	BOOST_FOREACH(const std::string& message, messages)
+	// ... offet (4 bytes)
+	encoder_consumer_helper::raw(stream, kafkaconnect::htonll(0));
+
+	// ... max_size (4 bytes)
+	encoder_consumer_helper::raw(stream, htonl(max_size));
+}
+
+
+template <typename List>
+void decode_consumer(std::istream& stream, List& messages)
+{
+	messages.clear();
+
+	uint32_t buffer_size;
+	encoder_consumer_helper::raw(stream, buffer_size, 4);
+	buffer_size = ntohl(buffer_size);
+
+	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
+	uint16_t error_code;
+	encoder_consumer_helper::raw(stream, error_code, 2);
+
+	uint32_t processed_bytes = 0;
+	uint32_t total_bytes_to_process  = buffer_size - 4  - 2;
+
+	while (processed_bytes <= total_bytes_to_process)
 	{
-		encoder_producer_helper::message(stream, message);
+		uint32_t message_size;
+		encoder_consumer_helper::raw(stream, message_size, 4);
+		message_size =  ntohl(message_size);
+
+		std::string message;
+		encoder_consumer_helper::message_decode(stream, message, message_size);
+		std::cout << "?" << message << "?" << std::endl;
+		messages.push_back(message);
+
+		processed_bytes += 4 + message_size;
 	}
 }
+
 
 }
 

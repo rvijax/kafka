@@ -30,7 +30,7 @@
 #include <stdint.h>
 
 namespace kafkaconnect {
-namespace test { class encoder_helper; }
+namespace test { class encoder_producer_helper; }
 
 const uint16_t kafka_format_version = 0;
 
@@ -41,7 +41,7 @@ const uint8_t message_format_header_size = message_format_extra_data_size + 4;
 class encoder_producer_helper
 {
 private:
-	friend class test::encoder_helper;
+	friend class test::encoder_producer_helper;
 	template <typename T> friend void encode_producer(std::ostream&, const std::string&, const uint32_t, const T&);
 
 	static std::ostream& message(std::ostream& stream, const std::string message)

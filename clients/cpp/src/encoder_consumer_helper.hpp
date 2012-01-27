@@ -22,6 +22,7 @@
 #define KAFKA_ENCODER_HELPER_HPP_
 
 #include <ostream>
+#include <istream>
 #include <string>
 
 #include <arpa/inet.h>
@@ -30,21 +31,25 @@
 #include <stdint.h>
 
 namespace kafkaconnect {
-namespace test { class encoder_helper; }
+namespace test { class encoder_consumer_helper; }
 
-const uint16_t kafka_format_version = 0;
+const uint16_t kafka_format_version = 1; // FETCh
 
 const uint8_t message_format_magic_number = 0;
 const uint8_t message_format_extra_data_size = 1 + 4;
 const uint8_t message_format_header_size = message_format_extra_data_size + 4;
 
-class encoder_producer_helper
+const uint32_t max_size = 1024 * 1024;
+
+class encoder_consumer_helper
 {
 private:
-	friend class test::encoder_helper;
-	template <typename T> friend void encode(std::ostream&, const std::string&, const uint32_t, const T&);
+	friend class test::encoder_consumer_helper;
+	friend void encode_consumer_request_size(std::ostream& , const std::string& );
+	friend void encode_consumer_request(std::ostream&, const std::string&, const uint32_t);
+	template <typename List> friend void decode_consumer(std::istream& stream, List& messages);
 
-	static std::ostream& message(std::ostream& stream, const std::string message)
+	static std::ostream& message_encode(std::ostream& stream, const std::string message)
 	{
 		// Message format is ... message & data size (4 bytes)
 		raw(stream, htonl(message_format_extra_data_size + message.length()));
@@ -61,6 +66,43 @@ private:
 		stream << message;
 
 		return stream;
+	}
+
+	static std::istream& message_decode(std::istream& stream, std::string &message, uint32_t message_size)
+	{
+/*
+    A message. The format of an N byte message is the following:
+	 4 message size <-- already parsed in caller.
+	 1 byte "magic" identifier to allow format changes
+	 4 byte CRC32 of the payload
+	 N - 5 byte payload
+*/
+		// ... magic number (1 byte)
+		uint8_t message_format_magic_number;
+		raw(stream, message_format_magic_number, 1);
+
+		// Message format is ... message & data size (4 bytes)
+		uint32_t checksum;
+		raw(stream, checksum, 4);
+		checksum =  ntohl(checksum);
+
+		raw(stream, message, message_size);
+
+		// ... string crc32 (4 bytes)
+/*		boost::crc_32_type result;
+		result.process_bytes(message.c_str(), message.length());
+		raw(stream, htonl(result.checksum()));*/
+
+		// ... message string bytes
+		//stream >> message;
+
+		return stream;
+	}
+
+	template <typename Data>
+	static std::istream& raw(std::istream& stream, Data& data, size_t length)
+	{
+		stream.read(reinterpret_cast<char*>(&data), length);
 	}
 
 	template <typename Data>

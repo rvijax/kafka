@@ -17,22 +17,31 @@ EXAMPLE_LIBS = -lboost_system -lboost_thread -lkafkaconnect
 
 lib_LTLIBRARIES = libkafkaconnect.la
 
-libkafkaconnect_la_SOURCES = src/producer.cpp
+libkafkaconnect_la_SOURCES = src/producer.cpp \
+				src/consumer.cpp
+				
 libkafkaconnect_la_LDFLAGS = -version-info $(KAFKACONNECT_VERSION)
 
 kafkaconnect_includedir = $(includedir)/kafkaconnect
 kafkaconnect_include_HEADERS = src/producer.hpp \
-								src/encoder.hpp \
-								src/encoder_helper.hpp
+				src/consumer.hpp \
+				src/encoder_consumer.hpp \
+				src/encoder_consumer_helper.hpp \
+				src/encoder_producer.hpp \
+				src/encoder_producer_helper.hpp
 
 #
 # Examples
 #                                 
 
-noinst_PROGRAMS = producer
+noinst_PROGRAMS = producer \
+			consumer
 
-producer_SOURCES = src/example.cpp
+producer_SOURCES = src/kafka-producer.cpp
 producer_LDADD = $(DEPS_LIBS) $(EXAMPLE_LIBS)
+
+consumer_SOURCES = src/kafka-consumer.cpp
+consumer_LDADD = $(DEPS_LIBS) $(EXAMPLE_LIBS)
 
 #
 # Tests
