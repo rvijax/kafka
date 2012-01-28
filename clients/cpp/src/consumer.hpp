@@ -36,6 +36,8 @@
 #include <boost/iostreams/stream.hpp>
 
 #include <stdint.h>
+#include <fstream>
+#include <sstream>
 
 #include "encoder_consumer.hpp"
 
@@ -97,7 +99,7 @@ public:
 		delete buffer_write_consumer_request;
 		std::cout << "request send." << std::endl;
 
-		// start read
+		/*// start read
 		size_t header;
 		boost::asio::read(
 			_socket,
@@ -106,25 +108,68 @@ public:
 		header = htonl(header);
 		std::cout << "body is " << header << " bytes" << std::endl;
 
-		size_t bytes_to_read = header - 4;
-		char *buffer_read = new char[bytes_to_read];
-		uint32_t body_read = boost::asio::read(_socket, boost::asio::buffer( buffer_read, bytes_to_read) );
-		std::cout << "body is " << body_read << " bytes" << std::endl;
+		size_t bytes_to_read = header;
+		boost::asio::streambuf* buffer_read = new boost::asio::streambuf();
 
-		/*std::string output;
-			while(stream >> output)
-			    std::cout << output;
-		*/
+		//char *buffer_read = new char[bytes_to_read];
+		uint32_t body_read = boost::asio::read (_socket, *buffer_read, boost::asio::read_ );
+		std::cout << "body read: " << body_read << " bytes" << std::endl;
+*/
 
-		uint32_t buffer_read_cursor = 0;
-		kafkaconnect::decode_consumer(buffer_read, buffer_read_cursor, body_read, messages);
+		char buf[4];
+		/*try
+		{
+		  size_t len = read(socket, boost::asio::buffer(buf));
+		  //assert(len == 4);
+		  // process the 4 bytes in buf
+		}
+		catch (boost::system::system_error &err)
+		{
+		  // handle the error e.g by returning early
+		}*/
+
+		boost::system::error_code error;
+		std::stringstream str;
+
+		unsigned counter = 0;
+		bool first = true;
+		unsigned counter_stop = 110;
+		while (!error && counter < counter_stop)
+		{
+		  if (first)
+		  {
+		  	first = false;
+		  	size_t len = _socket.read_some(boost::asio::buffer(buf), error);
+		  	size_t header = atoi(buf);
+		  	counter_stop += counter_stop + htonl(header);
+		  	std::cout << "body is: " << buf << "|" <<  htonl(header) << " bytes" << std::endl;
+		  	counter += len;
+		  }
+		  else
+		  {
+			  size_t len = _socket.read_some(boost::asio::buffer(buf), error);
+			  str << buf;
+			  counter += len;
+			  std::cout << len << "[" << counter << "][" << buf << "]" << std::endl;
+		  }
+
+		  // process len bytes
+		}
+
+		//kafkaconnect::decode_consumer(buffer_read, body_read, messages);
+
+		std::ofstream myfile;
+    	myfile.open ("response.txt");
+    	myfile << str;
 
 		/*for (unsigned i=0; i< body_read; i++)
 		{
-			std::cout << "[" << buffer_read[i] << "]" << std::endl;
+		//	std::cout << "[" << buffer_read[i] << "]" << std::endl;
+			myfile << buffer_read[i];
 		}*/
+		 myfile.close();
 
-		delete 	buffer_read;
+		//delete 	buffer_read;
 		return true;
 	}
 

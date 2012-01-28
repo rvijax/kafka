@@ -43,6 +43,7 @@ const uint8_t message_format_extra_data_size = 1 + 4;
 const uint8_t message_format_header_size = message_format_extra_data_size + 4;
 
 const uint32_t max_size = 1024 * 1024;
+typedef boost::iostreams::basic_array_source<char> Device;
 
 class encoder_consumer_helper
 {
@@ -50,7 +51,7 @@ private:
 	friend class test::encoder_consumer_helper;
 	friend void encode_consumer_request_size(std::ostream& , const std::string& );
 	friend void encode_consumer_request(std::ostream&, const std::string&, const uint32_t);
-	template <typename List> friend void decode_consumer(char* buffer_read, uint32_t &buffer_read_cursor, const uint32_t buffer_size, List& messages);
+	template <typename List> friend void decode_consumer(char* buffer_read, const uint32_t buffer_size, List& messages);
 
 	static std::ostream& message_encode(std::ostream& stream, const std::string message)
 	{
@@ -71,7 +72,7 @@ private:
 		return stream;
 	}
 
-	static void message_decode(char* buffer_read, uint32_t &buffer_read_cursor, const uint32_t buffer_size, std::string &message, uint32_t message_size)
+	static boost::iostreams::stream<Device>& message_decode(boost::iostreams::stream<Device>& stream_read, std::string &message, uint32_t message_size)
 	{
 /*
     A message. The format of an N byte message is the following:
@@ -82,15 +83,17 @@ private:
 */
 		// ... magic number (1 byte)
 		uint8_t message_format_magic_number;
-		raw(buffer_read, buffer_read_cursor, buffer_size, message_format_magic_number, 1);
+		stream_read.read((char*)&message_format_magic_number, sizeof(message_format_magic_number));
+		//raw(stream, message_format_magic_number, 1);
 
 		// Message format is ... message & data size (4 bytes)
 		uint32_t checksum;
-		raw(buffer_read, buffer_read_cursor, buffer_size, checksum, 4);
+		stream_read.read((char*)&checksum, sizeof(checksum));
+		//raw(stream, checksum, 4);
 		checksum =  ntohl(checksum);
 
-		raw(buffer_read, buffer_read_cursor, buffer_size, message, message_size - 4 - 1 - 4);
-
+		stream_read.read((char*)&message, message_size - 4 - 1 - 4);
+		//raw(stream, message, message_size - 4 - 1 - 4);
 		// ... string crc32 (4 bytes)
 /*		boost::crc_32_type result;
 		result.process_bytes(message.c_str(), message.length());
@@ -98,27 +101,15 @@ private:
 
 		// ... message string bytes
 		//stream >> message;
+
+		return stream_read;
 	}
 
 	template <typename Data>
-	static void raw(char* buffer_read, uint32_t &buffer_read_cursor, const uint32_t buffer_size, Data& data, size_t length)
+	static boost::iostreams::stream<Device>& raw(boost::iostreams::stream<Device>& stream, Data& data, size_t length)
 	{
-		std::stringstream stream;
-		unsigned counter = 0;
-
-		std::cout << "raw:" << length << ":[";
-		while(counter < length)
-		{
-			std::cout <<  buffer_read[buffer_read_cursor + counter] << "|";
-			stream << buffer_read[buffer_read_cursor + counter];
-			++counter;
-		}
-		std::cout << "]" << std::endl;
-
 		stream.readsome(reinterpret_cast<char*>(&data), length);
-		buffer_read_cursor+=length;
-
-		std::cout <<  "rawfinal[" << data << "]" << std::endl;
+		std::cout <<  "!" << data << "!" << std::endl;
 	}
 
 	template <typename Data>

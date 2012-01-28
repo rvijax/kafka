@@ -25,7 +25,6 @@
 #include "encoder_consumer_helper.hpp"
 
 #include <iostream>
-#include <strstream>
 
 namespace kafkaconnect {
 
@@ -98,22 +97,22 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 
 
 template <typename List>
-void decode_consumer(char* buffer_read, uint32_t &buffer_read_cursor, const uint32_t buffer_size, List& messages)
+void decode_consumer(char* buffer_read, const uint32_t buffer_size, List& messages)
 {
-	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
-
 	messages.clear();
-/*
-	uint32_t buffer_size;
+
+	boost::iostreams::stream<Device> stream_read(buffer_read, sizeof(buffer_read));
+
+/*	uint32_t buffer_size;
 	stream >> buffer_size;
 	//encoder_consumer_helper::raw(stream, buffer_size, 4);
-	buffer_size = ntohl(buffer_size);
-*/
+	buffer_size = ntohl(buffer_size);*/
+
 	std::cout << "buffer-size:[" << buffer_size  << "][" << ntohl(buffer_size) << "]" << std::endl;
 
+	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
-	encoder_consumer_helper::raw(buffer_read, buffer_read_cursor, buffer_size, error_code, 2);
-
+	stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
 	std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
 
 	uint32_t processed_bytes = 2;
@@ -121,20 +120,26 @@ void decode_consumer(char* buffer_read, uint32_t &buffer_read_cursor, const uint
 
 	while (processed_bytes <= total_bytes_to_process)
 	{
+		uint16_t error_code;
+		stream_read.read( (char*)&error_code, sizeof(error_code));
+		std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
+/*
 		uint32_t message_size;
 		//stream_read.read((char*)&message_size, sizeof(message_size));
 		//stream_read >> message_size;
-		encoder_consumer_helper::raw(buffer_read, buffer_read_cursor, buffer_size, message_size, 4);
+		encoder_consumer_helper::raw(stream_read, message_size, 4);
 
 		std::cout << "message_size:[" << message_size  << "][" << ntohs(message_size) << "]" << std::endl;
 		message_size =  ntohl(message_size);
 
 		std::string message;
-		encoder_consumer_helper::message_decode(buffer_read, buffer_read_cursor, buffer_size, message, message_size);
+		encoder_consumer_helper::message_decode(stream_read, message, message_size);
 		std::cout << "?" << message_size << "?" << message << "?" << std::endl;
 		messages.push_back(message);
 
 		processed_bytes += message_size + 4;
+		*/
+		processed_bytes += 2;
 	}
 }
 
