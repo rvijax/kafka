@@ -99,35 +99,39 @@ public:
 		delete buffer_write_consumer_request;
 		std::cout << "request send." << std::endl;
 
-		/*// start read
-		size_t header;
+		// start read
+/*		size_t header;
 		boost::asio::read(
 			_socket,
 			boost::asio::buffer( &header, sizeof(header) )
 		);
 		header = htonl(header);
-		std::cout << "body is " << header << " bytes" << std::endl;
 
 		size_t bytes_to_read = header;
 		boost::asio::streambuf* buffer_read = new boost::asio::streambuf();
+		//char buffer_read[bytes_to_read];
 
-		//char *buffer_read = new char[bytes_to_read];
-		uint32_t body_read = boost::asio::read (_socket, *buffer_read, boost::asio::read_ );
+		std::cout << "body is " << header << "|" <<sizeof(buffer_read) << " bytes" << std::endl;
+
+		uint32_t body_read = boost::asio::read (
+						_socket,
+						boost::asio::buffer( &buffer_read, header) );
+
+
+		uint32_t body_read = boost::asio::read (_socket, *buffer_read, boost::asio::transfer_at_least(header));
+
+		std::istream stream_read(buffer_read);
+
 		std::cout << "body read: " << body_read << " bytes" << std::endl;
-*/
+		std::string header1;
+		while(std::getline(stream_read, header1))
+		{
+			myfile << header;
+		}
+		 myfile.close();*/
+
 
 		char buf[4];
-		/*try
-		{
-		  size_t len = read(socket, boost::asio::buffer(buf));
-		  //assert(len == 4);
-		  // process the 4 bytes in buf
-		}
-		catch (boost::system::system_error &err)
-		{
-		  // handle the error e.g by returning early
-		}*/
-
 		boost::system::error_code error;
 		std::stringstream str;
 
@@ -139,7 +143,7 @@ public:
 		  if (first)
 		  {
 		  	first = false;
-		  	size_t len = _socket.read_some(boost::asio::buffer(buf), error);
+		  	size_t len = _socket.read(boost::asio::buffer(buf), error);
 		  	size_t header = atoi(buf);
 		  	counter_stop += counter_stop + htonl(header);
 		  	std::cout << "body is: " << buf << "|" <<  htonl(header) << " bytes" << std::endl;
@@ -156,18 +160,17 @@ public:
 		  // process len bytes
 		}
 
+
 		//kafkaconnect::decode_consumer(buffer_read, body_read, messages);
 
 		std::ofstream myfile;
     	myfile.open ("response.txt");
-    	myfile << str;
 
 		/*for (unsigned i=0; i< body_read; i++)
 		{
 		//	std::cout << "[" << buffer_read[i] << "]" << std::endl;
 			myfile << buffer_read[i];
 		}*/
-		 myfile.close();
 
 		//delete 	buffer_read;
 		return true;
