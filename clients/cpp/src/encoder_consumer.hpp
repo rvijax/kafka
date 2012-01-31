@@ -108,12 +108,18 @@ void decode_consumer(char* buffer_read, const uint32_t buffer_size, List& messag
 {
 	messages.clear();
 
+
 	OneShotReadBuf osrb(buffer_read, buffer_size);
 	std::istream stream_read(&osrb);
 
+	stream_read >> std::cout.rdbuf();
+
+	return;
+
 	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
-	stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
+	//stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
+
 	std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
 
 	uint32_t processed_bytes = 2;
