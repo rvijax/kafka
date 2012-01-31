@@ -89,15 +89,15 @@ public:
 		//std::istringstream stream_read(buffer_read);
 		kafkaconnect::decode_consumer(buffer_read, body_read, messages);
 
-		std::ofstream myfile;
+		/*std::ofstream myfile;
     	myfile.open ("response.txt");
 
 		for (unsigned i=0; i< body_read; i++)
 		{
-			std::cout << "[" << buffer_read[i] << "]" << std::endl;
+			//std::cout << "[" << buffer_read[i] << "]" << std::endl;
 			myfile << buffer_read[i];
 		}
-
+*/
 		delete 	buffer_read;
 		return true;
 	}

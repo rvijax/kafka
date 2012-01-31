@@ -42,8 +42,6 @@ int main(int argc, char* argv[])
 	}
 
 	std::vector<std::string> messages;
-	messages.push_back("So long and thanks for all the fish");
-	messages.push_back("Time is an illusion. Lunchtime doubly so.");
 	messages.push_back("Vijay");
 	producer.send(messages, "test");
 

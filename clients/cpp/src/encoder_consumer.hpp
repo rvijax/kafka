@@ -95,74 +95,59 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 	encoder_consumer_helper::raw(stream, htonl(max_size));
 }
 
-struct OneShotReadBuf : public std::streambuf
-{
-    OneShotReadBuf(char* s, std::size_t n)
-    {
-        setg(s, s, s + n);
-    }
-};
-
 template <typename List>
-void decode_consumer(char* buffer_read, const uint32_t buffer_size, List& messages)
+void decode_consumer(char* buffer_read, const uint32_t total_bytes_to_process, List& messages)
 {
 	messages.clear();
-
-
-	OneShotReadBuf osrb(buffer_read, buffer_size);
-	std::istream stream_read(&osrb);
-
-	stream_read >> std::cout.rdbuf();
-
-	return;
+	uint32_t processed_bytes_cursor = 0;
 
 	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
-	//stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
+	std::memcpy(&error_code, buffer_read + processed_bytes_cursor, sizeof(error_code));
+	processed_bytes_cursor += sizeof(error_code);
 
-	std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
-
-	uint32_t processed_bytes = 2;
-	uint32_t total_bytes_to_process  = buffer_size;
-
-	while (processed_bytes <= total_bytes_to_process)
+	while (processed_bytes_cursor < total_bytes_to_process)
 	{
-		uint32_t message_size;
-		stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
-
-		std::cout << "message_size:[" << message_size  << "][" << ntohl(message_size) << "]" << std::endl;
-		message_size =  ntohl(message_size);
-
 		/*
 		A message. The format of an N byte message is the following:
 		 4 message size <-- already parsed in caller.
 		 1 byte "magic" identifier to allow format changes
 		 4 byte CRC32 of the payload
 		 N - 5 byte payload
-		 */
+		*/
+
+		uint32_t message_size;
+		std::memcpy(&message_size, buffer_read + processed_bytes_cursor, sizeof(message_size));
+		processed_bytes_cursor += sizeof(message_size);
+		message_size =  ntohl(message_size);
+
 		// ... magic number (1 byte)
 		uint8_t message_format_magic_number;
-		stream_read.read(reinterpret_cast<char*>(&message_format_magic_number), sizeof(message_format_magic_number));
+		std::memcpy(&message_format_magic_number, buffer_read + processed_bytes_cursor, sizeof(message_format_magic_number));
+		processed_bytes_cursor += sizeof(message_format_magic_number);
+		message_format_magic_number =  ntohl(message_format_magic_number);
 
-		// Message format is ... message & data size (4 bytes)
+		// ... string crc32 (4 bytes)
 		uint32_t checksum;
-		stream_read.read(reinterpret_cast<char*>(&checksum), sizeof(checksum));
+		std::memcpy(&checksum, buffer_read + processed_bytes_cursor, sizeof(checksum));
+		processed_bytes_cursor += sizeof(checksum);
 		checksum =  ntohl(checksum);
 
 		// ... message string bytes
-		std::string message;
-		stream_read.read(reinterpret_cast<char*>(&message), message_size - 1 - 4);
-		messages.push_back(message);
+		char *msg = new char[message_size - 1 - 4];
+		std::memcpy(msg, buffer_read + processed_bytes_cursor, message_size - 1 - 4);
+		processed_bytes_cursor += message_size - 1 - 4;
+
+		std::string message(msg);
+		delete msg;
 
 		std::cout << "[message:" << message << "][size:" << message_size - 1 - 4 << "]" << std::endl;
 
-		// ... string crc32 (4 bytes)
-		/*
+		// check checksum
 		boost::crc_32_type result;
 		result.process_bytes(message.c_str(), message.length());
-		*/
-
-		processed_bytes += message_size + 4;
+		if (result.checksum() == checksum)
+			messages.push_back(message);
 	}
 }
 
