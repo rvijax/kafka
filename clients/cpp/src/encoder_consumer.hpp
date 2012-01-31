@@ -134,9 +134,11 @@ void decode_consumer(char* buffer_read, const uint32_t total_bytes_to_process, L
 		checksum =  ntohl(checksum);
 
 		// ... message string bytes
-		char *msg = new char[message_size - 1 - 4];
-		std::memcpy(msg, buffer_read + processed_bytes_cursor, message_size - 1 - 4);
-		processed_bytes_cursor += message_size - 1 - 4;
+		uint32_t length = message_size - 1 - 4 + 1; // +1 for null terminal character
+		char *msg = new char[length];
+		std::memcpy(msg, buffer_read + processed_bytes_cursor, length - 1);
+		processed_bytes_cursor += length - 1;
+		msg[length - 1] = '\0';
 
 		std::string message(msg);
 		delete msg;
