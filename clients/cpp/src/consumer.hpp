@@ -1,27 +1,3 @@
-/**
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
-*/
-
-/*
- * consumer.hpp
- *
- *  Created on: 21 Jun 2011
- *      Author: Ben Gray (@benjamg)
- */
-
 #ifndef KAFKA_CONSUMER_HPP_
 #define KAFKA_CONSUMER_HPP_
 
@@ -59,12 +35,6 @@ public:
 	void close();
 	bool is_connected() const;
 
-	/*bool send(const std::string& message, const std::string& topic, const uint32_t partition = kafkaconnect::use_random_partition)
-	{
-		boost::array<std::string, 1> messages = { { message } };
-		return send(messages, topic, partition);
-	}*/
-
 	// TODO: replace this with a sending of the buffered data so encode is called prior to send this will allow for decoupling from the encoder
 	template <typename List>
 	bool consume(List& messages, const std::string& topic, const uint32_t partition)
@@ -99,80 +69,36 @@ public:
 		delete buffer_write_consumer_request;
 		std::cout << "request send." << std::endl;
 
-		// start read
-/*		size_t header;
+		// start read:
+
+		// Read "N" - size of response
+		uint32_t header;
 		boost::asio::read(
 			_socket,
 			boost::asio::buffer( &header, sizeof(header) )
 		);
 		header = htonl(header);
+		std::cout << "body is " << header << " bytes" << std::endl;
 
+		// Read the response
 		size_t bytes_to_read = header;
-		boost::asio::streambuf* buffer_read = new boost::asio::streambuf();
-		//char buffer_read[bytes_to_read];
-
-		std::cout << "body is " << header << "|" <<sizeof(buffer_read) << " bytes" << std::endl;
-
-		uint32_t body_read = boost::asio::read (
-						_socket,
-						boost::asio::buffer( &buffer_read, header) );
-
-
-		uint32_t body_read = boost::asio::read (_socket, *buffer_read, boost::asio::transfer_at_least(header));
-
-		std::istream stream_read(buffer_read);
-
+		char *buffer_read = new char[bytes_to_read];
+		size_t body_read = boost::asio::read(_socket, boost::asio::buffer( buffer_read, bytes_to_read) );
 		std::cout << "body read: " << body_read << " bytes" << std::endl;
-		std::string header1;
-		while(std::getline(stream_read, header1))
-		{
-			myfile << header;
-		}
-		 myfile.close();*/
 
-
-		char buf[4];
-		boost::system::error_code error;
-		std::stringstream str;
-
-		unsigned counter = 0;
-		bool first = true;
-		unsigned counter_stop = 110;
-		while (!error && counter < counter_stop)
-		{
-		  if (first)
-		  {
-		  	first = false;
-		  	size_t len = _socket.read(boost::asio::buffer(buf), error);
-		  	size_t header = atoi(buf);
-		  	counter_stop += counter_stop + htonl(header);
-		  	std::cout << "body is: " << buf << "|" <<  htonl(header) << " bytes" << std::endl;
-		  	counter += len;
-		  }
-		  else
-		  {
-			  size_t len = _socket.read_some(boost::asio::buffer(buf), error);
-			  str << buf;
-			  counter += len;
-			  std::cout << len << "[" << counter << "][" << buf << "]" << std::endl;
-		  }
-
-		  // process len bytes
-		}
-
-
-		//kafkaconnect::decode_consumer(buffer_read, body_read, messages);
+		//std::istringstream stream_read(buffer_read);
+		kafkaconnect::decode_consumer(buffer_read, body_read, messages);
 
 		std::ofstream myfile;
     	myfile.open ("response.txt");
 
-		/*for (unsigned i=0; i< body_read; i++)
+		for (unsigned i=0; i< body_read; i++)
 		{
-		//	std::cout << "[" << buffer_read[i] << "]" << std::endl;
+			std::cout << "[" << buffer_read[i] << "]" << std::endl;
 			myfile << buffer_read[i];
-		}*/
+		}
 
-		//delete 	buffer_read;
+		delete 	buffer_read;
 		return true;
 	}
 

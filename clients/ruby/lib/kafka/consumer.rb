@@ -84,6 +84,7 @@ module Kafka
     def consume
       self.send_consume_request         # request data
       data = self.read_data_response    # read data response
+      puts data.size
       self.parse_message_set_from(data) # parse message set
     end
 

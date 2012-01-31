@@ -72,6 +72,7 @@ private:
 		return stream;
 	}
 
+	//static void message_decode(const char* buffer, const uint32_t message_start, const uint32_t message_end, std::string &message)
 	static boost::iostreams::stream<Device>& message_decode(boost::iostreams::stream<Device>& stream_read, std::string &message, uint32_t message_size)
 	{
 /*
@@ -81,7 +82,7 @@ private:
 	 4 byte CRC32 of the payload
 	 N - 5 byte payload
 */
-		// ... magic number (1 byte)
+	/*	// ... magic number (1 byte)
 		uint8_t message_format_magic_number;
 		stream_read.read((char*)&message_format_magic_number, sizeof(message_format_magic_number));
 		//raw(stream, message_format_magic_number, 1);
@@ -92,24 +93,23 @@ private:
 		//raw(stream, checksum, 4);
 		checksum =  ntohl(checksum);
 
-		stream_read.read((char*)&message, message_size - 4 - 1 - 4);
-		//raw(stream, message, message_size - 4 - 1 - 4);
-		// ... string crc32 (4 bytes)
-/*		boost::crc_32_type result;
-		result.process_bytes(message.c_str(), message.length());
-		raw(stream, htonl(result.checksum()));*/
-
 		// ... message string bytes
-		//stream >> message;
+		char* msg  = new char[message_size - 1 - 4];
+		stream_read.read(msg, message_size - 1 - 4);
 
-		return stream_read;
+		std::cout << "[message:" << msg << "][size:" << message_size - 1 - 4 << "]" << std::endl;
+
+		// ... string crc32 (4 bytes)
+		boost::crc_32_type result;
+		result.process_bytes(message.c_str(), message.length());
+
+		return stream_read;*/
 	}
 
 	template <typename Data>
 	static boost::iostreams::stream<Device>& raw(boost::iostreams::stream<Device>& stream, Data& data, size_t length)
 	{
 		stream.readsome(reinterpret_cast<char*>(&data), length);
-		std::cout <<  "!" << data << "!" << std::endl;
 	}
 
 	template <typename Data>

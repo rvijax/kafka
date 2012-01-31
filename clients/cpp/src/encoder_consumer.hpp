@@ -95,20 +95,21 @@ void encode_consumer_request(std::ostream& stream, const std::string& topic, con
 	encoder_consumer_helper::raw(stream, htonl(max_size));
 }
 
+struct OneShotReadBuf : public std::streambuf
+{
+    OneShotReadBuf(char* s, std::size_t n)
+    {
+        setg(s, s, s + n);
+    }
+};
 
 template <typename List>
 void decode_consumer(char* buffer_read, const uint32_t buffer_size, List& messages)
 {
 	messages.clear();
 
-	boost::iostreams::stream<Device> stream_read(buffer_read, sizeof(buffer_read));
-
-/*	uint32_t buffer_size;
-	stream >> buffer_size;
-	//encoder_consumer_helper::raw(stream, buffer_size, 4);
-	buffer_size = ntohl(buffer_size);*/
-
-	std::cout << "buffer-size:[" << buffer_size  << "][" << ntohl(buffer_size) << "]" << std::endl;
+	OneShotReadBuf osrb(buffer_read, buffer_size);
+	std::istream stream_read(&osrb);
 
 	// source: https://cwiki.apache.org/confluence/display/KAFKA/Writing+a+Driver+for+Kafka
 	uint16_t error_code;
@@ -120,26 +121,42 @@ void decode_consumer(char* buffer_read, const uint32_t buffer_size, List& messag
 
 	while (processed_bytes <= total_bytes_to_process)
 	{
-		uint16_t error_code;
-		stream_read.read( (char*)&error_code, sizeof(error_code));
-		std::cout << "error_code:[" << error_code  << "][" << ntohs(error_code) << "]" << std::endl;
-/*
 		uint32_t message_size;
-		//stream_read.read((char*)&message_size, sizeof(message_size));
-		//stream_read >> message_size;
-		encoder_consumer_helper::raw(stream_read, message_size, 4);
+		stream_read.read(reinterpret_cast<char*>(&error_code), sizeof(error_code));
 
-		std::cout << "message_size:[" << message_size  << "][" << ntohs(message_size) << "]" << std::endl;
+		std::cout << "message_size:[" << message_size  << "][" << ntohl(message_size) << "]" << std::endl;
 		message_size =  ntohl(message_size);
 
+		/*
+		A message. The format of an N byte message is the following:
+		 4 message size <-- already parsed in caller.
+		 1 byte "magic" identifier to allow format changes
+		 4 byte CRC32 of the payload
+		 N - 5 byte payload
+		 */
+		// ... magic number (1 byte)
+		uint8_t message_format_magic_number;
+		stream_read.read(reinterpret_cast<char*>(&message_format_magic_number), sizeof(message_format_magic_number));
+
+		// Message format is ... message & data size (4 bytes)
+		uint32_t checksum;
+		stream_read.read(reinterpret_cast<char*>(&checksum), sizeof(checksum));
+		checksum =  ntohl(checksum);
+
+		// ... message string bytes
 		std::string message;
-		encoder_consumer_helper::message_decode(stream_read, message, message_size);
-		std::cout << "?" << message_size << "?" << message << "?" << std::endl;
+		stream_read.read(reinterpret_cast<char*>(&message), message_size - 1 - 4);
 		messages.push_back(message);
 
-		processed_bytes += message_size + 4;
+		std::cout << "[message:" << message << "][size:" << message_size - 1 - 4 << "]" << std::endl;
+
+		// ... string crc32 (4 bytes)
+		/*
+		boost::crc_32_type result;
+		result.process_bytes(message.c_str(), message.length());
 		*/
-		processed_bytes += 2;
+
+		processed_bytes += message_size + 4;
 	}
 }
 
